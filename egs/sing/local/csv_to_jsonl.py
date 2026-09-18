@@ -49,12 +49,13 @@ def main(argv):
                 if not line:
                     continue
                 row = line.split("|")
-                if len(row) < 4:
+                rc = 5
+                if len(row) < rc:
                     raise ValueError(
-                        f"line {ln}: expected at least 4 pipe-delimited fields, got {len(row)}"
+                        f"line {ln}: expected at least {rc} pipe-delimited fields, got {len(row)}"
                     )
 
-                sample_id, original_text, lc_text, phonemes = row[:4]
+                sample_id, original_text, lc_text, phonemes, phonemes1 = row[:rc]
                 sample_id = sample_id.strip()
                 if not sample_id:
                     raise ValueError(f"line {ln}: sample ID is empty")
@@ -65,6 +66,8 @@ def main(argv):
                 }
                 if args.type == "ph":
                     record["text"] = phonemes
+                elif args.type == "ph1":
+                    record["text"] = phonemes1    
                 elif args.type == "gr":
                     record["text"] = original_text
                 else:
