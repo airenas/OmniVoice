@@ -1,10 +1,10 @@
 import argparse
+import logging
 import sys
 from typing import List
 
 import mlf
-from egs.sing.local.fix_mlf import fix_phone
-
+from egs.sing.local.accents import Accent, get_accent_index
 
 def change_phone(p) -> str:
     return p.replace("'", "").replace(".", "")
@@ -45,7 +45,20 @@ class Word:
             if pn:
                 res.append(pn)
 
-        return "".join(res)
+        return "".join(res).strip()
+
+    def word_accent_str(self):
+        if self.is_sil:
+            return ""
+        try:
+            acc, pos = get_accent_index(self.word, self.phones)
+            if acc != Accent.Unset:
+                return acc.add_to_word(pos, self.word) + get_punct(self.punctuation)
+        except Exception as ex:
+            logging.warning(f"Problem: {ex}")
+        return self.word + get_punct(self.punctuation)
+
+
 
 
 def get_words(words: List[Word]) -> str:
@@ -70,8 +83,17 @@ def get_word_phones(words: List[Word]) -> str:
     res = []
     for w in words:
         phones_str = w.word_phones_str()
-        res.append(phones_str)
+        if phones_str:
+            res.append(phones_str)
     return " ".join(res)
+
+def get_word_accents(words: List[Word]) -> str:
+    res = []
+    for w in words:
+        w_str = w.word_accent_str()
+        if w_str:
+            res.append(w_str)
+    return " ".join(res)    
 
 
 class Line:
@@ -87,8 +109,9 @@ class Line:
     def to_str(self):
         word_str = get_words(self.words)
         phones = get_phones(self.words)
-        word_phones = get_word_phones(self.words)
-        return f"{self.name}|{word_str}|{word_str.lower()}|{phones}|{word_phones}"
+        word_phones = get_word_phones(self.words).strip()
+        word_accent = get_word_accents(self.words)
+        return f"{self.name}|{word_str}|{word_str.lower()}|{phones}|{word_phones}|{word_accent}"
 
 
 def get_punct(s):
