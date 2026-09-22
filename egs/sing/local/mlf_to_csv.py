@@ -6,7 +6,10 @@ from typing import List
 import mlf
 from egs.sing.local.accents import Accent, get_accent_index
 
+
 def change_phone(p) -> str:
+    if p == ".":  ## do not drop dot
+        return p
     return p.replace("'", "").replace(".", "")
 
 
@@ -24,6 +27,8 @@ class Word:
         phones = self.phones[:]
         if mlf.is_sil(phones[-1]) and self.punctuation != "":
             phones.insert(-1, get_punct(self.punctuation))
+        elif self.punctuation != "":
+            phones.append(get_punct(self.punctuation))
         return " ".join(phones)
 
     def word_phones_str(self) -> str:
@@ -31,11 +36,10 @@ class Word:
             return ""
 
         phones = self.phones[:]
-        for i, p in enumerate(phones):
-            phones[i] = change_phone(p)
-
         if mlf.is_sil(phones[-1]) and self.punctuation != "":
             phones.insert(-1, get_punct(self.punctuation))
+        elif self.punctuation != "":
+            phones.append(get_punct(self.punctuation))
         if mlf.is_sil(phones[-1]):
             phones[-1] = " " + phones[-1]
 
@@ -59,8 +63,6 @@ class Word:
         return self.word + get_punct(self.punctuation)
 
 
-
-
 def get_words(words: List[Word]) -> str:
     res, prev = "", ""
     for w in words:
@@ -79,6 +81,7 @@ def get_phones(words: List[Word]) -> str:
         res.append(phones_str)
     return " ".join(res)
 
+
 def get_word_phones(words: List[Word]) -> str:
     res = []
     for w in words:
@@ -87,13 +90,14 @@ def get_word_phones(words: List[Word]) -> str:
             res.append(phones_str)
     return " ".join(res)
 
+
 def get_word_accents(words: List[Word]) -> str:
     res = []
     for w in words:
         w_str = w.word_accent_str()
         if w_str:
             res.append(w_str)
-    return " ".join(res)    
+    return " ".join(res)
 
 
 class Line:
@@ -133,6 +137,8 @@ def main(argv):
     parser = argparse.ArgumentParser(description="Convert mlf to specific csv",
                                      epilog="E.g. cat input.mlf | " + sys.argv[0] + " > result.mlf",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--input", dest="input_file", type=argparse.FileType("r"), default=sys.stdin,
+                        help="Input MLF file; read stdin when omitted")
     parser.add_argument("--outputPhones", default=False, action='store_true', help="Do output phones")
     parser.add_argument("--skipSP", default=False, action='store_true', help="Skip 'sp' after punctuation")
     args = parser.parse_args(args=argv)
@@ -142,7 +148,7 @@ def main(argv):
     lc = 0
     wc = 0
     ln: Line | None = None
-    for line in sys.stdin:
+    for line in args.input_file:
         lc += 1
         s_line = line.strip()
         try:
@@ -151,7 +157,7 @@ def main(argv):
             if s_line.startswith("\""):
                 if ln:
                     print(ln.to_str(), file=sys.stdout)
-                ln = Line(name = s_line.strip('""').replace(".lab", ""))
+                ln = Line(name=s_line.strip('""').replace(".lab", ""))
             elif s_line == ".":
                 continue
             else:
@@ -160,7 +166,7 @@ def main(argv):
                 m_line = mlf.from_str(line.rstrip())
                 if m_line.is_word():
                     wc += 1
-                    ln.words.append(Word(word = m_line.word, punctuation = m_line.punct))
+                    ln.words.append(Word(word=m_line.word, punctuation=m_line.punct))
                 if len(ln.words) == 0 and m_line.ph == "sil":
                     w = Word(word="", punctuation="")
                     w.is_sil = True
